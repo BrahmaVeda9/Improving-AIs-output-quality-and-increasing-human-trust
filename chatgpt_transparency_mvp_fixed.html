@@ -1,0 +1,248 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.app{display:flex;flex-direction:column;min-height:640px;background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);overflow:hidden}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:0.5px solid var(--color-border-tertiary);background:var(--color-background-primary)}
+.topbar-left{display:flex;align-items:center;gap:8px}
+.ai-dot{width:26px;height:26px;border-radius:50%;background:#10b981;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;color:#fff}
+.model-name{font-size:14px;font-weight:500;color:var(--color-text-primary)}
+.model-tag{font-size:11px;padding:2px 7px;background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:6px;color:var(--color-text-secondary)}
+.toggle-area{display:flex;align-items:center;gap:8px}
+.toggle-area span{font-size:12px;color:var(--color-text-secondary)}
+.tog{position:relative;width:38px;height:20px;cursor:pointer;display:inline-block}
+.tog input{opacity:0;width:0;height:0;position:absolute}
+.track{position:absolute;inset:0;background:#ccc;border-radius:10px;transition:background .2s}
+.tog input:checked ~ .track{background:#10b981}
+.thumb{position:absolute;top:2px;left:2px;width:16px;height:16px;background:#fff;border-radius:50%;transition:transform .2s;pointer-events:none}
+.tog input:checked ~ .track .thumb{transform:translateX(18px)}
+.tog-label{font-size:12px;font-weight:500;min-width:24px}
+
+.legend{display:none;flex-wrap:wrap;gap:5px;padding:8px 14px;background:var(--color-background-secondary);border-bottom:0.5px solid var(--color-border-tertiary);align-items:center}
+.legend.show{display:flex}
+.legend-title{font-size:11px;color:var(--color-text-tertiary);margin-right:2px}
+
+.chat{flex:1;overflow-y:auto;padding:16px 14px;display:flex;flex-direction:column;gap:14px}
+.row{display:flex;gap:9px;align-items:flex-start}
+.row.user{flex-direction:row-reverse}
+.av{width:27px;height:27px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;flex-shrink:0;color:#fff}
+.av.ai{background:#10b981}
+.av.u{background:#378add}
+.bub{max-width:88%;padding:11px 13px;border-radius:var(--border-radius-lg);font-size:13px;line-height:1.65;color:var(--color-text-primary);background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary)}
+.bub.user{background:#378add;color:#fff;border-color:#378add}
+.bub p{margin-bottom:7px}
+.bub p:last-child{margin-bottom:0}
+.bub ul{margin:5px 0 5px 15px}
+.bub li{margin-bottom:3px}
+.bub b{font-weight:500}
+
+.chip{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:99px;font-size:11px;font-weight:500;cursor:pointer;border:0.5px solid transparent;margin:0 2px;vertical-align:middle;position:relative;line-height:1.4}
+.chip:hover{filter:brightness(0.95)}
+.c-assumed{background:#fef3c7;color:#92400e;border-color:#fcd34d}
+.c-uncertain{background:#fee2e2;color:#991b1b;border-color:#fca5a5}
+.c-tradeoff{background:#fce7f3;color:#9d174d;border-color:#f9a8d4}
+.c-unverifiable{background:#ede9fe;color:#5b21b6;border-color:#c4b5fd}
+.c-context{background:#dbeafe;color:#1e40af;border-color:#93c5fd}
+.c-conflict{background:#d1fae5;color:#065f46;border-color:#6ee7b7}
+.c-outdated{background:#ffedd5;color:#9a3412;border-color:#fdba74}
+
+.popup{position:absolute;top:calc(100% + 5px);left:0;width:255px;background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-lg);padding:11px;z-index:999;display:none}
+.popup.open{display:block}
+.popup h4{font-size:12px;font-weight:500;margin-bottom:5px;color:var(--color-text-primary)}
+.popup p{font-size:12px;color:var(--color-text-secondary);line-height:1.5;margin-bottom:9px}
+.pact{display:flex;gap:6px}
+.pbtn{font-size:11px;padding:4px 9px;border-radius:6px;border:0.5px solid var(--color-border-secondary);background:var(--color-background-secondary);color:var(--color-text-primary);cursor:pointer}
+.pbtn.green{background:#10b981;color:#fff;border-color:#10b981}
+
+.inputrow{padding:10px 14px;border-top:0.5px solid var(--color-border-tertiary);display:flex;gap:7px;align-items:flex-end}
+.inp{flex:1;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-lg);padding:9px 11px;font-size:13px;font-family:var(--font-sans);color:var(--color-text-primary);background:var(--color-background-secondary);resize:none;min-height:38px;line-height:1.5}
+.inp:focus{outline:none;border-color:var(--color-border-primary)}
+.sendbtn{width:34px;height:34px;border-radius:50%;background:#10b981;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sendbtn:hover{opacity:.85}
+.sendbtn i{color:#fff;font-size:15px}
+.dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--color-text-tertiary);animation:bl 1.2s infinite}
+.dot:nth-child(2){animation-delay:.2s}
+.dot:nth-child(3){animation-delay:.4s}
+@keyframes bl{0%,100%{opacity:.2}50%{opacity:1}}
+</style>
+
+<h2 class="sr-only">ChatGPT Output Transparency Layer MVP — toggle output signals to see inline uncertainty markers on AI responses</h2>
+
+<div class="app">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="ai-dot">AI</div>
+      <span class="model-name">ChatGPT</span>
+      <span class="model-tag">GPT-4o</span>
+    </div>
+    <div class="toggle-area">
+      <span>Output signals</span>
+      <label class="tog">
+        <input type="checkbox" id="tog">
+        <div class="track"><div class="thumb"></div></div>
+      </label>
+      <span class="tog-label" id="tlabel" style="color:var(--color-text-tertiary)">Off</span>
+    </div>
+  </div>
+
+  <div class="legend" id="legend">
+    <span class="legend-title">Signal types:</span>
+    <span class="chip c-assumed" style="cursor:default;pointer-events:none">Assumed</span>
+    <span class="chip c-uncertain" style="cursor:default;pointer-events:none">Not certain</span>
+    <span class="chip c-outdated" style="cursor:default;pointer-events:none">May be outdated</span>
+    <span class="chip c-context" style="cursor:default;pointer-events:none">Context-dependent</span>
+    <span class="chip c-conflict" style="cursor:default;pointer-events:none">Conflicting info</span>
+    <span class="chip c-unverifiable" style="cursor:default;pointer-events:none">Can't verify</span>
+    <span class="chip c-tradeoff" style="cursor:default;pointer-events:none">Tradeoff made</span>
+  </div>
+
+  <div class="chat" id="chat">
+    <div class="row user">
+      <div class="av u">You</div>
+      <div class="bub user">Write a market analysis of EV adoption in India for a client report. Include growth figures, key barriers, and a 2-year outlook.</div>
+    </div>
+
+    <div class="row" id="airow">
+      <div class="av ai">AI</div>
+      <div class="bub" id="aibub"></div>
+    </div>
+
+    <div id="extra"></div>
+  </div>
+
+  <div class="inputrow">
+    <textarea class="inp" id="cinput" placeholder="Ask a follow-up..." rows="1"></textarea>
+    <button class="sendbtn" onclick="doSend()" aria-label="Send">
+      <i class="ti ti-send" aria-hidden="true"></i>
+    </button>
+  </div>
+</div>
+
+<script>
+var signalsOn = false;
+
+var plainHTML = '<p><b>EV Adoption in India — Market Analysis</b></p><p>India\'s electric vehicle market has seen significant momentum over the past three years. Domestic EV sales grew approximately 3x between 2021 and 2023, driven primarily by the two-wheeler and three-wheeler segments, which together account for over 80% of total EV units sold.</p><p>The government\'s FAME II subsidy scheme has been a key demand driver, allocating ₹10,000 crore to accelerate adoption across segments. The PLI scheme for Advanced Chemistry Cell batteries is expected to reduce import dependency and lower vehicle costs over the medium term.</p><p><b>Key barriers to adoption:</b></p><ul><li>Charging infrastructure remains underdeveloped outside Tier 1 cities</li><li>High upfront cost of passenger EVs compared to ICE alternatives</li><li>Consumer range anxiety, particularly in highway and rural contexts</li><li>Grid reliability concerns in Tier 2 and Tier 3 markets</li></ul><p><b>2-year outlook:</b> The passenger EV segment is projected to reach 8–10% market penetration by 2026, assuming continued policy support and a 15–20% reduction in battery costs. Commercial fleet electrification — particularly ride-sharing and last-mile delivery — is expected to be the primary growth vector.</p>';
+
+var signalsHTML = '<p><b>EV Adoption in India — Market Analysis</b></p>'
+  + '<p>India\'s electric vehicle market has seen significant momentum over the past three years. Domestic EV sales grew approximately 3x between 2021 and 2023 '
+  + chip('c-outdated','clock','May be outdated','My context may be outdated','This growth figure comes from my training data. EV market numbers in India shift rapidly — verify current figures from SIAM or the VAHAN dashboard before using this in a client report.','What are the latest EV sales figures for India in 2024?')
+  + ', driven primarily by the two-wheeler and three-wheeler segments, which together account for over 80% of total EV units sold.</p>'
+  + '<p>The government\'s FAME II subsidy scheme has been a key demand driver, allocating ₹10,000 crore to accelerate adoption. '
+  + chip('c-assumed','alert-triangle','I assumed','I assumed','You didn\'t specify a timeframe for policy relevance. I assumed FAME II is still the active scheme. FAME III discussions were ongoing as of my training — verify current policy status before presenting to a client.','Is FAME II still active or has FAME III replaced it in India?')
+  + ' The PLI scheme for Advanced Chemistry Cell batteries is expected to reduce import dependency over the medium term.</p>'
+  + '<p><b>Key barriers to adoption:</b></p><ul>'
+  + '<li>Charging infrastructure remains underdeveloped outside Tier 1 cities</li>'
+  + '<li>High upfront cost of passenger EVs compared to ICE alternatives '
+  + chip('c-context','user','Context-dependent','This depends on your context','Cost comparison varies significantly by segment. In 2-wheelers, EVs are near cost parity. In passenger cars, the premium is ₹3–8 lakh higher upfront. If your report covers a specific segment, this needs to be scoped accordingly.','Break down EV vs ICE cost comparison by vehicle segment in India')
+  + '</li>'
+  + '<li>Consumer range anxiety, particularly in highway and rural contexts</li>'
+  + '<li>Grid reliability concerns in Tier 2 and Tier 3 markets</li></ul>'
+  + '<p><b>2-year outlook:</b> The passenger EV segment is projected to reach 8–10% market penetration by 2026 '
+  + chip('c-uncertain','help-circle','Not certain','I\'m not certain about this','This projection is based on analyst forecasts from my training data, not a specific cited report. Estimates vary widely — from 5% to 15% penetration by 2026. Don\'t present this as a definitive figure without citing a named source.','What are the most widely cited EV market penetration forecasts for India by 2026?')
+  + ', assuming continued policy support and a 15–20% reduction in battery costs. '
+  + chip('c-conflict','arrows-diff','Conflicting info','There\'s conflicting information on this','Battery cost reduction timelines are contested. Some analysts project 15–20% decline by 2025; others argue supply chain pressures will limit this to 8–12%. I used the optimistic estimate — the conservative case changes the outlook significantly.','Show me both optimistic and conservative battery cost scenarios for India EV market')
+  + ' Commercial fleet electrification is expected to be the primary growth vector.</p>';
+
+function chip(cls, icon, label, title, body, query) {
+  return '<span class="chip ' + cls + '" onclick="openChip(this)" role="button" tabindex="0" style="position:relative">'
+    + label
+    + '<span class="popup" onclick="event.stopPropagation()">'
+    + '<h4>' + title + '</h4>'
+    + '<p>' + body + '</p>'
+    + '<div class="pact">'
+    + '<button class="pbtn" onclick="dismiss(this)">Got it</button>'
+    + (query ? '<button class="pbtn green" onclick="prefill(\'' + query.replace(/'/g,"\\'") + '\')">Ask about this</button>' : '')
+    + '</div></span></span>';
+}
+
+function renderResponse() {
+  var bub = document.getElementById('aibub');
+  bub.innerHTML = signalsOn ? signalsHTML : plainHTML;
+}
+
+document.getElementById('tog').addEventListener('change', function() {
+  signalsOn = this.checked;
+  var lbl = document.getElementById('tlabel');
+  var leg = document.getElementById('legend');
+  lbl.textContent = signalsOn ? 'On' : 'Off';
+  lbl.style.color = signalsOn ? '#10b981' : 'var(--color-text-tertiary)';
+  if (signalsOn) { leg.classList.add('show'); } else { leg.classList.remove('show'); }
+  closeAll();
+  renderResponse();
+});
+
+function openChip(el) {
+  var p = el.querySelector('.popup');
+  var wasOpen = p.classList.contains('open');
+  closeAll();
+  if (!wasOpen) p.classList.add('open');
+}
+
+function closeAll() {
+  document.querySelectorAll('.popup.open').forEach(function(p){ p.classList.remove('open'); });
+}
+
+function dismiss(btn) {
+  var popup = btn.closest('.popup');
+  var chip = popup.closest('.chip');
+  popup.classList.remove('open');
+  chip.style.opacity = '0.3';
+  chip.style.pointerEvents = 'none';
+}
+
+function prefill(q) {
+  closeAll();
+  document.getElementById('cinput').value = q;
+  document.getElementById('cinput').focus();
+}
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.chip')) closeAll();
+});
+
+var replies = {
+  fame: 'FAME II remains the primary central scheme as of my training data. FAME III was under discussion but had not been formally announced. I\'d recommend checking the Ministry of Heavy Industries site for the current status before including this in a client document.',
+  battery: 'Battery cost projections vary: the optimistic case (BloombergNEF) suggests 15–20% reduction by 2026 via LFP adoption and local manufacturing. The conservative case (IEA) points to 8–12% due to raw material constraints. For a client report, presenting both scenarios with clear attribution is the safer approach.',
+  segment: 'Scoping by segment changes the cost picture significantly. 2-wheelers: EVs are near or at cost parity in the sub-₹1 lakh bracket. 3-wheelers: EVs have a clear TCO advantage at typical daily mileage. 4-wheeler passenger: EVs carry a ₹3–8 lakh upfront premium, though TCO can favour EV at high mileage. I can rewrite the barriers section scoped to a specific segment if helpful.',
+  def: 'Good follow-up. To give you a more precise answer, could you clarify: is this for a specific vehicle category, or a general market overview? And is the client a domestic manufacturer, an investor, or a policy body? That framing changes which data points matter most.'
+};
+
+function doSend() {
+  var inp = document.getElementById('cinput');
+  var txt = inp.value.trim();
+  if (!txt) return;
+  inp.value = '';
+  var extra = document.getElementById('extra');
+
+  var ur = document.createElement('div');
+  ur.className = 'row user';
+  ur.innerHTML = '<div class="av u">You</div><div class="bub user">' + txt + '</div>';
+  extra.appendChild(ur);
+
+  var tr = document.createElement('div');
+  tr.className = 'row';
+  tr.innerHTML = '<div class="av ai">AI</div><div class="bub"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>';
+  extra.appendChild(tr);
+  document.getElementById('chat').scrollTop = 99999;
+
+  setTimeout(function() {
+    var lc = txt.toLowerCase();
+    var r = replies.def;
+    if (lc.includes('fame') || lc.includes('policy')) r = replies.fame;
+    else if (lc.includes('battery') || lc.includes('cost')) r = replies.battery;
+    else if (lc.includes('segment') || lc.includes('breakdown') || lc.includes('category') || lc.includes('wheel')) r = replies.segment;
+
+    tr.remove();
+    var ar = document.createElement('div');
+    ar.className = 'row';
+    ar.innerHTML = '<div class="av ai">AI</div><div class="bub"><p>' + r + '</p></div>';
+    extra.appendChild(ar);
+    document.getElementById('chat').scrollTop = 99999;
+  }, 1300);
+}
+
+document.getElementById('cinput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doSend(); }
+});
+
+renderResponse();
+</script>

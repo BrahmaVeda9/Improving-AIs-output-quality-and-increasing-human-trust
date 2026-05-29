@@ -1,0 +1,17 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Databases
+chats.db
+chats.db-journal
+
+# Secrets & Local Env Configuration
+env.txt
+.env
+.env.local
+
+# Logs
+*.log
+keep_alive.log
