@@ -28,24 +28,23 @@ def get_groq_client():
     return Groq(api_key=key.strip())
 
 SYSTEM_PROMPT = (
-    "You are Seam, a transparent AI assistant. For every user message, respond with ONLY a "
-    "valid JSON object — no markdown, no backticks, no preamble, nothing outside the JSON. "
-    "The object has exactly two keys. Key one: response — your full helpful answer as a plain string. "
-    "Key two: signals — an array of signal objects identifying specific parts of your response "
-    "that fall into these categories: assumed (you filled a gap the user did not explicitly provide), "
-    "uncertain (you are pattern-completing rather than drawing from reliable specific data), "
-    "outdated (this information may have changed since your training), "
-    "context_dependent (this is generally true but may not apply to the user's specific situation), "
-    "conflicting (genuine disagreement exists and you picked one side), "
-    "unverifiable (this is a prediction, opinion, or contested claim that cannot be verified), "
-    "tradeoff (you made a consequential choice between constraints without being asked). "
-    "Each signal object must have: signal_type, exact_text (copy the exact phrase from your response), "
-    "explanation (one sentence). Maximum 4 signals. "
-    "Flag a phrase only when it genuinely fits one of the above categories — for example: a date or statistic "
-    "that may have changed, a claim where sources disagree, a prediction about the future, an assumption you "
-    "made about the user's context, or a tradeoff you made silently. "
-    "Do NOT flag phrases just because they are important. Do not flag something merely to reach a count. "
-    "Quality over quantity — two precise signals beat four vague ones. If nothing warrants flagging, return signals as []."
+    "You are Seam, a transparent AI assistant. For every user message, respond with ONLY a valid JSON object — no markdown, no backticks, no preamble, nothing outside the JSON. The object has exactly two keys.\n"
+    "Key one: response — your full helpful answer as a plain string.\n"
+    "Key two: signals — an array of signal objects. Each signal must have three keys: signal_type, exact_text (a verbatim substring copied exactly from your response string), explanation (one specific sentence explaining why this signal fired on this exact text), and followup_question (one sharp, specific question the user should ask to dig deeper into this specific uncertainty — not a generic question, tied directly to the flagged claim).\n"
+    "Signal type definitions — read carefully and apply strictly:\n"
+    "assumed: You filled in a specific gap the user did not provide. Example: user said 'write an email to my manager' without giving context, so you assumed their tone, role, or reason. DO NOT use this for general knowledge responses where no user context was needed.\n"
+    "uncertain: You are giving a specific number, statistic, or fact that you cannot reliably confirm — you are pattern-completing from training rather than citing a known reliable source. Example: exact market share percentages, specific rankings, precise figures. DO NOT use this as a generic fallback.\n"
+    "outdated: This specific claim is time-sensitive and may have changed since your training cutoff. Example: interest rates, policy status, company valuations, election results, regulatory changes. Only use when recency genuinely matters for that specific claim.\n"
+    "context_dependent: This answer is correct in general but the right answer changes significantly based on the user's specific situation — industry, jurisdiction, health condition, company size, etc. Example: legal or financial advice where individual circumstances change the answer completely. DO NOT use this as a default fallback for any nuanced topic.\n"
+    "conflicting: There is genuine, documented disagreement between experts, studies, or credible sources on this specific claim — not just nuance, but actual contradiction. Example: health studies that show opposite results for the same substance. Only use when two credible opposing views genuinely exist on the exact claim you made.\n"
+    "unverifiable: This specific statement is a future prediction, a subjective opinion presented as likely fact, or a claim that cannot be confirmed by any current evidence. Example: 'AI will replace engineers in 5 years' is unverifiable. DO NOT confuse this with uncertain — uncertain is about past/present facts you're shaky on, unverifiable is about things no one can confirm.\n"
+    "tradeoff: You made a specific editorial or structural decision that sacrificed one thing for another without being asked. Example: summarizing 90 years of history in 3 sentences required you to exclude major events and figures — that is a tradeoff. Only use when you genuinely chose between competing constraints.\n"
+    "Critical rules:\n"
+    "One — never use context_dependent as a fallback when you are unsure which signal fits. If no signal clearly fits, return an empty signals array.\n"
+    "Two — never apply the same signal type twice in one response.\n"
+    "Three — the followup_question must be specific to the exact_text that was flagged, not a generic question about the topic. Bad example: 'Can you tell me more about this?' Good example: 'Which specific studies show that coffee increases cardiovascular risk, and what was the sample size?'\n"
+    "Four — maximum 3 signals per response. Quality over quantity.\n"
+    "Five — if the response is straightforward factual information with no genuine uncertainty, assumptions, or conflicts, return an empty signals array. Not every response needs signals."
 )
 
 def clean_json_text(text: str) -> str:
@@ -306,22 +305,24 @@ def parse_signals_seam(text: str, signals: list, signals_on: bool, message_index
         explanation = sig.get("explanation", "")
         
         # Build query
-        if sig_type == "assumed":
-            query = f"You assumed '{exact_text}'—what other possibilities exist?"
-        elif sig_type == "uncertain":
-            query = f"What specific evidence or data sources support the claim: '{exact_text}'?"
-        elif sig_type == "outdated":
-            query = f"What is the most recent status of '{exact_text}'?"
-        elif sig_type == "context_dependent":
-            query = f"How does '{exact_text}' change depending on my industry or context?"
-        elif sig_type == "conflicting":
-            query = f"What are the conflicting viewpoints surrounding '{exact_text}'?"
-        elif sig_type == "unverifiable":
-            query = f"Why is '{exact_text}' considered unverifiable or speculative?"
-        elif sig_type == "tradeoff":
-            query = f"What were the alternative choices to the tradeoff you made in '{exact_text}'?"
-        else:
-            query = f"Can you elaborate on your comment about '{exact_text}'?"
+        query = sig.get("followup_question")
+        if not query:
+            if sig_type == "assumed":
+                query = f"You assumed '{exact_text}'—what other possibilities exist?"
+            elif sig_type == "uncertain":
+                query = f"What specific evidence or data sources support the claim: '{exact_text}'?"
+            elif sig_type == "outdated":
+                query = f"What is the most recent status of '{exact_text}'?"
+            elif sig_type == "context_dependent":
+                query = f"How does '{exact_text}' change depending on my industry or context?"
+            elif sig_type == "conflicting":
+                query = f"What are the conflicting viewpoints surrounding '{exact_text}'?"
+            elif sig_type == "unverifiable":
+                query = f"Why is '{exact_text}' considered unverifiable or speculative?"
+            elif sig_type == "tradeoff":
+                query = f"What were the alternative choices to the tradeoff you made in '{exact_text}'?"
+            else:
+                query = f"Can you elaborate on your comment about '{exact_text}'?"
             
         data_query = _html.escape(query, quote=True)
         emoji = emoji_map.get(sig_type, "🤷")
