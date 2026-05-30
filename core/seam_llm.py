@@ -190,6 +190,36 @@ def get_signal_style_rules(signals: list, message_index: int) -> str:
         
     return style_rules
 
+def find_best_sentence_match(text: str, exact_text: str) -> tuple:
+    """
+    Finds the start and end character indices of the sentence in text
+    that best matches the exact_text. If no good match is found,
+    returns the indices of the first sentence.
+    """
+    # Split text into sentences and track their start/end indices in the original text
+    sentence_matches = list(re.finditer(r'[^.!?]+[.!?]?', text))
+    if not sentence_matches:
+        return 0, len(text)
+        
+    # Clean and tokenize exact_text into words of length >= 3
+    words = [w.lower() for w in re.findall(r'\b\w+\b', exact_text) if len(w) >= 3]
+    if not words:
+        # Fallback to the first sentence
+        m = sentence_matches[0]
+        return m.start(), m.end()
+        
+    best_score = 0
+    best_match = sentence_matches[0]
+    
+    for m in sentence_matches:
+        s_text = m.group().lower()
+        score = sum(1 for w in words if w in s_text)
+        if score > best_score:
+            best_score = score
+            best_match = m
+            
+    return best_match.start(), best_match.end()
+
 def parse_signals_seam(text: str, signals: list, signals_on: bool, message_index: int) -> str:
     """Parses text, wrapping exact substrings with CSS selectors and outputting chips at the bottom."""
     if not signals or not signals_on:
@@ -303,9 +333,24 @@ def parse_signals_seam(text: str, signals: list, signals_on: bool, message_index
 
     import html as _html
 
-    # Sort matches by start index descending to insert spans right-to-left
-    matches.sort(key=lambda x: x[0], reverse=True)
-    temp_text = text
+    # Resolve unmatched signals to their best sentence range in the text
+    for sig in unmatched_signals:
+        sig_type = sig.get("signal_type", "uncertain").lower()
+        if sig_type not in class_map:
+            sig_type = "uncertain"
+        exact_text = sig.get("exact_text", "")
+        
+        group_counters[sig_type] += 1
+        k = group_counters[sig_type]
+        sig_id = f"msg_{message_index}_{sig_type}_{k}"
+        
+        start_orig, end_orig = find_best_sentence_match(text, exact_text)
+        matches.append((start_orig, end_orig, sig_id, sig))
+        
+    # Build the HTML string character by character to handle nested/overlapping ranges perfectly
+    open_tags = {i: [] for i in range(L + 1)}
+    close_tags = {i: [] for i in range(L + 1)}
+    
     for start, end, sig_id, sig in matches:
         sig_type = sig.get("signal_type", "uncertain").lower()
         if sig_type not in class_map:
@@ -351,59 +396,30 @@ def parse_signals_seam(text: str, signals: list, signals_on: bool, message_index
             f'</span>'
         )
         
-        temp_text = temp_text[:start] + f'<span class="sig-text-highlight sig-text-{sig_id}" data-group-id="{group_id}">{temp_text[start:end]}{popup_html}</span>' + temp_text[end:]
+        # Store tag details with length so we can sort for correct nesting
+        open_tags[start].append((end - start, f'<span class="sig-text-highlight sig-text-{sig_id}" data-group-id="{group_id}">'))
+        close_tags[end].append((end - start, f'{popup_html}</span>'))
         
-    for sig in unmatched_signals:
-        sig_type = sig.get("signal_type", "uncertain").lower()
-        if sig_type not in class_map:
-            sig_type = "uncertain"
-        exact_text = sig.get("exact_text", "")
-        explanation = sig.get("explanation", "")
-        
-        group_counters[sig_type] += 1
-        k = group_counters[sig_type]
-        sig_id = f"msg_{message_index}_{sig_type}_{k}"
-        
-        # Build query
-        query = sig.get("followup_question")
-        if not query:
-            if sig_type == "assumed":
-                query = f"You assumed '{exact_text}'—what other possibilities exist?"
-            elif sig_type == "uncertain":
-                query = f"What specific evidence or data sources support the claim: '{exact_text}'?"
-            elif sig_type == "outdated":
-                query = f"What is the most recent status of '{exact_text}'?"
-            elif sig_type == "context_dependent":
-                query = f"How does '{exact_text}' change depending on my industry or context?"
-            elif sig_type == "conflicting":
-                query = f"What are the conflicting viewpoints surrounding '{exact_text}'?"
-            elif sig_type == "unverifiable":
-                query = f"Why is '{exact_text}' considered unverifiable or speculative?"
-            elif sig_type == "tradeoff":
-                query = f"What were the alternative choices to the tradeoff you made in '{exact_text}'?"
-            else:
-                query = f"Can you elaborate on your comment about '{exact_text}'?"
+    # Build final string from pieces
+    chunks = []
+    for i in range(L + 1):
+        # 1. Output closing tags at this boundary (shortest first)
+        if close_tags[i]:
+            sorted_closes = sorted(close_tags[i], key=lambda x: x[0])
+            for _, tag in sorted_closes:
+                chunks.append(tag)
+                
+        # 2. Output opening tags at this boundary (longest first)
+        if open_tags[i]:
+            sorted_opens = sorted(open_tags[i], key=lambda x: x[0], reverse=True)
+            for _, tag in sorted_opens:
+                chunks.append(tag)
+                
+        # 3. Output the character if not at the end
+        if i < L:
+            chunks.append(text[i])
             
-        data_query = _html.escape(query, quote=True)
-        emoji = emoji_map.get(sig_type, "🤷")
-        display_name = display_name_map.get(sig_type, "I'm Not Certain")
-        group_id = f"msg_{message_index}_{sig_type}"
-        
-        # Inline popup nested inside the highlight span
-        popup_html = (
-            f'<span class="popup" onclick="event.stopPropagation()">'
-            f'<span style="font-size:13px; line-height:1.5; color:#ececec; display:block;">'
-            f'{emoji} <strong>{display_name}</strong>: {explanation}'
-            f'</span>'
-            f'<span class="pact" style="margin-top:8px; display:flex; gap:8px; justify-content:flex-end;">'
-            f'<button type="button" class="pbtn" data-dismiss-chip="chip-wrap-{group_id}" data-close-toggle="sig-toggle-{group_id}">Got it</button>'
-            f'<button type="button" class="pbtn green" data-ask-seam="{data_query}" data-sig-id="sig-toggle-{group_id}">Ask Seam</button>'
-            f'</span>'
-            f'</span>'
-        )
-        
-        temp_text = f'<span class="sig-text-highlight sig-text-{sig_id}" data-group-id="{group_id}">{temp_text}{popup_html}</span>'
-        
+    temp_text = "".join(chunks)
     temp_text = temp_text.replace("\n", "<br>")
         
     checkboxes_html = ""
