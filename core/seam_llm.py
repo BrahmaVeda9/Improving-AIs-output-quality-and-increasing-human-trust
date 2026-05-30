@@ -225,9 +225,12 @@ def parse_signals_seam(text: str, signals: list, signals_on: bool, message_index
         
     # Match exact substrings using the alphanumeric-only coverage algorithm
     group_counters = {k: 0 for k in class_map}
+    unmatched_signals = []
+    
     for sig in sorted_signals:
         exact_text = sig.get("exact_text", "")
         if not exact_text or not exact_text.strip():
+            unmatched_signals.append(sig)
             continue
         
         sig_type = sig.get("signal_type", "uncertain").lower()
@@ -237,6 +240,7 @@ def parse_signals_seam(text: str, signals: list, signals_on: bool, message_index
         clean_exact = exact_text.strip().replace("\\'", "'").replace('\\"', '"')
         norm_exact = "".join(c.lower() for c in clean_exact if c.isalnum())
         if not norm_exact:
+            unmatched_signals.append(sig)
             continue
             
         # Collect uncovered alphanumeric characters
@@ -249,6 +253,7 @@ def parse_signals_seam(text: str, signals: list, signals_on: bool, message_index
         
         # Find all occurrences of norm_exact in norm_text to find a contiguous uncovered match
         start_search = 0
+        found = False
         while True:
             match_idx = norm_text.find(norm_exact, start_search)
             if match_idx == -1:
@@ -267,9 +272,13 @@ def parse_signals_seam(text: str, signals: list, signals_on: bool, message_index
                 sig_id = f"msg_{message_index}_{sig_type}_{k}"
                 
                 matches.append((start_orig, end_orig, sig_id, sig))
+                found = True
                 break
                 
             start_search = match_idx + 1
+            
+        if not found:
+            unmatched_signals.append(sig)
             
     # Emoji mappings for inline popups
     emoji_map = {
@@ -343,6 +352,57 @@ def parse_signals_seam(text: str, signals: list, signals_on: bool, message_index
         )
         
         temp_text = temp_text[:start] + f'<span class="sig-text-highlight sig-text-{sig_id}" data-group-id="{group_id}">{temp_text[start:end]}{popup_html}</span>' + temp_text[end:]
+        
+    for sig in unmatched_signals:
+        sig_type = sig.get("signal_type", "uncertain").lower()
+        if sig_type not in class_map:
+            sig_type = "uncertain"
+        exact_text = sig.get("exact_text", "")
+        explanation = sig.get("explanation", "")
+        
+        group_counters[sig_type] += 1
+        k = group_counters[sig_type]
+        sig_id = f"msg_{message_index}_{sig_type}_{k}"
+        
+        # Build query
+        query = sig.get("followup_question")
+        if not query:
+            if sig_type == "assumed":
+                query = f"You assumed '{exact_text}'—what other possibilities exist?"
+            elif sig_type == "uncertain":
+                query = f"What specific evidence or data sources support the claim: '{exact_text}'?"
+            elif sig_type == "outdated":
+                query = f"What is the most recent status of '{exact_text}'?"
+            elif sig_type == "context_dependent":
+                query = f"How does '{exact_text}' change depending on my industry or context?"
+            elif sig_type == "conflicting":
+                query = f"What are the conflicting viewpoints surrounding '{exact_text}'?"
+            elif sig_type == "unverifiable":
+                query = f"Why is '{exact_text}' considered unverifiable or speculative?"
+            elif sig_type == "tradeoff":
+                query = f"What were the alternative choices to the tradeoff you made in '{exact_text}'?"
+            else:
+                query = f"Can you elaborate on your comment about '{exact_text}'?"
+            
+        data_query = _html.escape(query, quote=True)
+        emoji = emoji_map.get(sig_type, "🤷")
+        display_name = display_name_map.get(sig_type, "I'm Not Certain")
+        group_id = f"msg_{message_index}_{sig_type}"
+        
+        # Inline popup nested inside the highlight span
+        popup_html = (
+            f'<span class="popup" onclick="event.stopPropagation()">'
+            f'<span style="font-size:13px; line-height:1.5; color:#ececec; display:block;">'
+            f'{emoji} <strong>{display_name}</strong>: {explanation}'
+            f'</span>'
+            f'<span class="pact" style="margin-top:8px; display:flex; gap:8px; justify-content:flex-end;">'
+            f'<button type="button" class="pbtn" data-dismiss-chip="chip-wrap-{group_id}" data-close-toggle="sig-toggle-{group_id}">Got it</button>'
+            f'<button type="button" class="pbtn green" data-ask-seam="{data_query}" data-sig-id="sig-toggle-{group_id}">Ask Seam</button>'
+            f'</span>'
+            f'</span>'
+        )
+        
+        temp_text = f'<span class="sig-text-highlight sig-text-{sig_id}" data-group-id="{group_id}">{temp_text}{popup_html}</span>'
         
     temp_text = temp_text.replace("\n", "<br>")
         

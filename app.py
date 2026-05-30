@@ -1133,20 +1133,19 @@ else:
                 return;
             }
 
-            var highlight = e.target.closest('.sig-text-highlight');
-            if (highlight) {
-                if (hoverTimeout) clearTimeout(hoverTimeout);
-                
-                // Retrieve groupId directly from the span's data-group-id attribute
-                var groupId = highlight.getAttribute('data-group-id');
+            var current = e.target.closest('.sig-text-highlight');
+            while (current) {
+                var groupId = current.getAttribute('data-group-id');
                 if (groupId) {
                     // Only show if the toggle is checked (meaning highlights are visible!)
                     var toggle = D.getElementById('sig-toggle-' + groupId);
                     if (toggle && toggle.checked) {
-                        P.__seamShowTooltip(highlight, groupId);
+                        if (hoverTimeout) clearTimeout(hoverTimeout);
+                        P.__seamShowTooltip(current, groupId);
+                        return;
                     }
                 }
-                return;
+                current = current.parentElement ? current.parentElement.closest('.sig-text-highlight') : null;
             }
         };
 
