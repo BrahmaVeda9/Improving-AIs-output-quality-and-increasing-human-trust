@@ -58,32 +58,26 @@ footer {
     background: #424242;
 }
 
-/* Force main container to use full viewport width and ignore sidebar layout shifting */
+/* Allow sidebar to live alongside the main area — do NOT override flex layout */
 [data-testid="stAppViewContainer"] {
     padding: 0 !important;
     margin: 0 !important;
-    width: 100vw !important;
-    max-width: 100vw !important;
 }
 
+/* Main content area — let it sit naturally next to the sidebar */
 [data-testid="stMain"] {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
     overflow-x: hidden !important;
     overflow-y: auto !important;
-    margin-left: 0 !important;
     padding-left: 0 !important;
+    margin-left: 0 !important;
 }
 
-/* Main Container margins and alignment - centered relative to stable full-width viewport */
+/* Content block: centered narrow column like ChatGPT */
 div.block-container {
     padding-top: 8.5rem !important; /* Space below fixed top bar */
     padding-bottom: 11rem !important; /* Space above input bar and toggle */
     max-width: 680px !important; /* exact ChatGPT content width */
-    margin: 0 auto !important; /* Centers perfectly inside full-width main view */
+    margin: 0 auto !important; /* Centers perfectly inside stMain */
     background-color: #171717 !important;
     overflow: visible !important;
 }
@@ -92,11 +86,14 @@ div.block-container {
 [data-testid="stSidebar"] {
     background-color: #0d0d0d !important;
     border-right: 1px solid #2f2f2f !important;
-    position: fixed !important;
-    z-index: 100000 !important;
 }
 [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] {
     color: #94a3b8 !important;
+}
+
+/* Keep the sidebar expand button (collapsed control) always on top of the fixed topbar */
+[data-testid="collapsedControl"] {
+    z-index: 100000 !important;
 }
 
 /* Top bar - fixed top center, glassmorphic */
@@ -616,12 +613,42 @@ div[data-testid="stForm"] button[data-testid="baseButton-primaryFormSubmit"]:hov
     transform: scale(1.05) !important;
 }
 
-/* Example Prompts container */
-.example-container {
+/* Example Prompts Centered Container & Pills */
+.example-container-seam {
     display: flex;
     gap: 12px;
     justify-content: center;
-    margin-top: 24px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-top: 40px;
+    width: 100%;
+}
+
+.example-pill-seam {
+    background-color: #212121 !important;
+    color: #ececec !important;
+    border: 1px solid #2f2f2f !important;
+    border-radius: 99px !important;
+    font-size: 13.5px !important;
+    font-weight: 500 !important;
+    padding: 8px 16px !important;
+    text-decoration: none !important;
+    transition: all 150ms ease !important;
+    text-align: center !important;
+    cursor: pointer !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+}
+
+.example-pill-seam:hover {
+    background-color: #2f2f2f !important;
+    border-color: #424242 !important;
+    color: #ffffff !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+.example-pill-seam:active {
+    transform: translateY(0) !important;
 }
 
 /* Loading animations inside transparent bubble */
@@ -806,58 +833,15 @@ if not chat_history:
         ("📄 Online Business Taxes", "Detail the current tax regulations for online businesses.")
     ]
     
-    # Render example pills and handle DIRECT triggers
-    st.markdown('<div class="example-container">', unsafe_allow_html=True)
-    col1, col2, col3 = st.columns(3)
-    
-    selected_prompt = None
-    with col1:
-        if st.button(example_prompts[0][0], key="ex_1", use_container_width=True):
-            selected_prompt = example_prompts[0][1]
-    with col2:
-        if st.button(example_prompts[1][0], key="ex_2", use_container_width=True):
-            selected_prompt = example_prompts[1][1]
-    with col3:
-        if st.button(example_prompts[2][0], key="ex_3", use_container_width=True):
-            selected_prompt = example_prompts[2][1]
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    # If any example prompt was clicked, submit it DIRECTLY to Groq
-    if selected_prompt:
-        save_message(st.session_state.session_id, "user", selected_prompt)
-        history = get_chat_history(st.session_state.session_id)
-        
-        # Show animated loading dots
-        loading_placeholder = st.empty()
-        loading_html = """
-        <div class="bubble-row-seam">
-          <div class="ai-avatar-seam"><div class="ai-avatar-icon-seam"></div></div>
-          <div class="bub-seam-content">
-            <div class="loading-bubble">
-              <span class="loading-dot"></span>
-              <span class="loading-dot"></span>
-              <span class="loading-dot"></span>
-            </div>
-          </div>
-        </div>
-        """
-        loading_placeholder.markdown(loading_html, unsafe_allow_html=True)
-        
-        try:
-            llm_result = chat_completion(history)
-            loading_placeholder.empty()
-            save_message(
-                st.session_state.session_id, 
-                "assistant", 
-                llm_result.get("response", ""), 
-                llm_result.get("signals", [])
-            )
-        except Exception as e:
-            loading_placeholder.empty()
-            save_message(st.session_state.session_id, "assistant", f'<div class="error-bubble">Groq API Error: {str(e)}</div>', [])
-            
-        st.session_state.chat_input_val = ""
-        st.rerun()
+    # Render example pills as clickable custom HTML links centered on the page
+    example_html = """
+    <div class="example-container-seam">
+      <a href="?query=Who+will+win+the+next+World+Cup%3F" target="_self" class="example-pill-seam">🔮 Next World Cup</a>
+      <a href="?query=Should+I+invest+in+cryptocurrency+right+now%3F" target="_self" class="example-pill-seam">💰 Invest in Crypto</a>
+      <a href="?query=Detail+the+current+tax+regulations+for+online+businesses." target="_self" class="example-pill-seam">📄 Online Business Taxes</a>
+    </div>
+    """
+    st.markdown(example_html, unsafe_allow_html=True)
 
 else:
     # Render convo container
@@ -963,44 +947,80 @@ else:
         // ── Layout Fixer (version-agnostic DOM styling) ──────────────────────────
         function seamFixLayout() {
             var form = D.querySelector('div[data-testid="stForm"]');
-            if (!form) return;
-
-            // Fix the floating form card
-            Object.assign(form.style, {
-                position: 'fixed', bottom: '24px', left: '50%',
-                transform: 'translateX(-50%)', width: '680px',
-                maxWidth: 'calc(100vw - 40px)', height: '120px',
-                backgroundColor: '#212121', border: '1px solid #2f2f2f',
-                borderRadius: '20px', padding: '12px 16px 56px 16px',
-                boxShadow: '0 10px 40px rgba(0,0,0,0.4)',
-                zIndex: '9999', overflow: 'visible'
-            });
-
-            // Find the submit button — covers every selector ever used by Streamlit
-            var btn = form.querySelector('button[kind="primaryFormSubmit"]')
-                   || form.querySelector('[data-testid="stFormSubmitButton"] button')
-                   || form.querySelector('button[data-testid="baseButton-primaryFormSubmit"]')
-                   || form.querySelector('button[type="submit"]');
-
-            if (btn) {
-                Object.assign(btn.style, {
-                    position: 'absolute', right: '16px', bottom: '14px',
-                    top: 'auto', left: 'auto', transform: 'none',
-                    width: '36px', height: '36px',
-                    minWidth: '36px', minHeight: '36px',
-                    borderRadius: '50%', background: '#0084ff',
-                    border: 'none', color: '#ffffff', fontSize: '18px',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    cursor: 'pointer', zIndex: '10000',
-                    boxShadow: '0 2px 8px rgba(0,132,255,0.3)', padding: '0'
-                });
-                // Make all ancestor wrappers inside the form non-offsetting
-                var el = btn.parentElement;
-                while (el && el !== form) {
-                    el.style.position = 'static';
-                    el.style.overflow = 'visible';
-                    el = el.parentElement;
+            
+            // Detect active sidebar width
+            var sidebar = D.querySelector('[data-testid="stSidebar"]');
+            var sidebarWidth = 0;
+            if (sidebar) {
+                var rect = sidebar.getBoundingClientRect();
+                if (rect.width > 0 && rect.right > 0) {
+                    sidebarWidth = rect.width;
                 }
+            }
+            var offset = sidebarWidth / 2;
+
+            if (form) {
+                // Fix the floating form card centered in the remaining area
+                Object.assign(form.style, {
+                    position: 'fixed', bottom: '24px',
+                    left: 'calc(50% + ' + offset + 'px)',
+                    transform: 'translateX(-50%)', width: '680px',
+                    maxWidth: 'calc(100vw - ' + (sidebarWidth + 40) + 'px)', height: '120px',
+                    backgroundColor: '#212121', border: '1px solid #2f2f2f',
+                    borderRadius: '20px', padding: '12px 16px 56px 16px',
+                    boxShadow: '0 10px 40px rgba(0,0,0,0.4)',
+                    zIndex: '9999', overflow: 'visible'
+                });
+
+                // Find the submit button — covers every selector ever used by Streamlit
+                var btn = form.querySelector('button[kind="primaryFormSubmit"]')
+                       || form.querySelector('[data-testid="stFormSubmitButton"] button')
+                       || form.querySelector('button[data-testid="baseButton-primaryFormSubmit"]')
+                       || form.querySelector('button[type="submit"]');
+
+                if (btn) {
+                    Object.assign(btn.style, {
+                        position: 'absolute', right: '16px', bottom: '14px',
+                        top: 'auto', left: 'auto', transform: 'none',
+                        width: '36px', height: '36px',
+                        minWidth: '36px', minHeight: '36px',
+                        borderRadius: '50%', background: '#0084ff',
+                        border: 'none', color: '#ffffff', fontSize: '18px',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: 'pointer', zIndex: '10000',
+                        boxShadow: '0 2px 8px rgba(0,132,255,0.3)', padding: '0'
+                    });
+                    // Make all ancestor wrappers inside the form non-offsetting
+                    var el = btn.parentElement;
+                    while (el && el !== form) {
+                        el.style.position = 'static';
+                        el.style.overflow = 'visible';
+                        el = el.parentElement;
+                    }
+                }
+            }
+
+            // Target the Illuminate checkbox overlay
+            var checkbox = D.querySelector('div[data-testid="stCheckbox"]');
+            if (checkbox) {
+                Object.assign(checkbox.style, {
+                    position: 'fixed',
+                    bottom: '152px',
+                    left: 'calc(50% + ' + offset + 'px)',
+                    transform: 'translateX(-50%)',
+                    width: 'calc(100% - ' + (sidebarWidth + 40) + 'px)',
+                    maxWidth: '680px',
+                    display: 'flex',
+                    justifyContent: 'flex-end',
+                    zIndex: '100000',
+                    pointerEvents: 'none'
+                });
+            }
+
+            // Target top bar logo container to shift it to center of remaining area
+            var logoContainer = D.querySelector('.logo-container-seam');
+            if (logoContainer) {
+                logoContainer.style.transform = 'translateX(' + offset + 'px)';
             }
         }
 
