@@ -30,8 +30,26 @@ html, body, [class*="css"], .stMarkdown {
     color: #ececec !important;
 }
 
-/* Hide Streamlit default headers, decoration, and footers */
+/* Hide default header backgrounds/interactions but keep the sidebar expand control visible */
 [data-testid="stHeader"] {
+    background-color: transparent !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    pointer-events: none !important;
+}
+
+/* Make sure the collapsed control (expand button) remains visible and interactive */
+[data-testid="collapsedControl"] {
+    display: flex !important;
+    pointer-events: auto !important;
+    z-index: 100000 !important;
+}
+
+/* Hide other icons/buttons in the header (Deploy button, GitHub, Main menu) */
+[data-testid="stHeader"] [data-testid="stHeaderActionButton"],
+[data-testid="stHeader"] .stAppDeployButton,
+[data-testid="stHeader"] button:not([data-testid="collapsedControl"]):not([data-testid="collapsedControl"] *) {
     display: none !important;
 }
 footer {
@@ -89,11 +107,6 @@ div.block-container {
 }
 [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] {
     color: #94a3b8 !important;
-}
-
-/* Keep the sidebar expand button (collapsed control) always on top of the fixed topbar */
-[data-testid="collapsedControl"] {
-    z-index: 100000 !important;
 }
 
 /* Top bar - fixed top center, glassmorphic */
