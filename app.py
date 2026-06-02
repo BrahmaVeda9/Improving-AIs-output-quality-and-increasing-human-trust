@@ -58,32 +58,26 @@ footer {
     background: #424242;
 }
 
-/* Force main container to use full viewport width and ignore sidebar layout shifting */
+/* Allow sidebar to live alongside the main area — do NOT override flex layout */
 [data-testid="stAppViewContainer"] {
     padding: 0 !important;
     margin: 0 !important;
-    width: 100vw !important;
-    max-width: 100vw !important;
 }
 
+/* Main content area — let it sit naturally next to the sidebar */
 [data-testid="stMain"] {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
     overflow-x: hidden !important;
     overflow-y: auto !important;
-    margin-left: 0 !important;
     padding-left: 0 !important;
+    margin-left: 0 !important;
 }
 
-/* Main Container margins and alignment - centered relative to stable full-width viewport */
+/* Content block: centered narrow column like ChatGPT */
 div.block-container {
-    padding-top: 8.5rem !important; /* Space below fixed top bar */
-    padding-bottom: 11rem !important; /* Space above input bar and toggle */
-    max-width: 680px !important; /* exact ChatGPT content width */
-    margin: 0 auto !important; /* Centers perfectly inside full-width main view */
+    padding-top: 8.5rem !important;
+    padding-bottom: 11rem !important;
+    max-width: 680px !important;
+    margin: 0 auto !important;
     background-color: #171717 !important;
     overflow: visible !important;
 }
@@ -813,21 +807,20 @@ if not chat_history:
         ("📄 Online Business Taxes", "Detail the current tax regulations for online businesses.")
     ]
     
-    # Render example pills and handle DIRECT triggers
-    st.markdown('<div class="example-container">', unsafe_allow_html=True)
-    col1, col2, col3 = st.columns(3)
-    
+    # Render example pills — use st.columns inside a centered narrow wrapper
     selected_prompt = None
-    with col1:
-        if st.button(example_prompts[0][0], key="ex_1", use_container_width=True):
-            selected_prompt = example_prompts[0][1]
-    with col2:
-        if st.button(example_prompts[1][0], key="ex_2", use_container_width=True):
-            selected_prompt = example_prompts[1][1]
-    with col3:
-        if st.button(example_prompts[2][0], key="ex_3", use_container_width=True):
-            selected_prompt = example_prompts[2][1]
-    st.markdown('</div>', unsafe_allow_html=True)
+    _, mid, _ = st.columns([1, 6, 1])
+    with mid:
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            if st.button(example_prompts[0][0], key="ex_1", use_container_width=True):
+                selected_prompt = example_prompts[0][1]
+        with c2:
+            if st.button(example_prompts[1][0], key="ex_2", use_container_width=True):
+                selected_prompt = example_prompts[1][1]
+        with c3:
+            if st.button(example_prompts[2][0], key="ex_3", use_container_width=True):
+                selected_prompt = example_prompts[2][1]
 
     # If any example prompt was clicked, submit it DIRECTLY to Groq
     if selected_prompt:
