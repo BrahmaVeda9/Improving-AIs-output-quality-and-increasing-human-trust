@@ -6,19 +6,29 @@ import streamlit as st
 # Cache client object to avoid recreating it on every successful database call
 supabase_client = None
 
+def _get_secret(key: str) -> str:
+    """Reads a secret from st.secrets (Streamlit Cloud) or falls back to environment variables."""
+    try:
+        val = st.secrets.get(key)
+        if val:
+            return str(val).strip()
+    except Exception:
+        pass
+    return os.getenv(key, "")
+
 def get_supabase_client():
     global supabase_client
     if supabase_client is not None:
         return supabase_client
         
-    # Reload environment variables to see if credentials were provided
+    # Reload environment variables to see if credentials were provided locally
     if os.path.exists("env.txt"):
         load_dotenv("env.txt", override=True)
     else:
         load_dotenv(override=True)
         
-    url = os.getenv("SUPABASE_URL")
-    key = os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_ANON_KEY")
+    url = _get_secret("SUPABASE_URL")
+    key = _get_secret("SUPABASE_KEY") or _get_secret("SUPABASE_ANON_KEY")
     
     if url and key and url.strip() and key.strip():
         try:

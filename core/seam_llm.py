@@ -5,24 +5,33 @@ import urllib.parse
 import streamlit as st
 from dotenv import load_dotenv
 
-# Load configuration from env.txt or .env
+# Load configuration from env.txt or .env for local development
 if os.path.exists("env.txt"):
     load_dotenv("env.txt")
 else:
     load_dotenv()
 
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+def _get_secret(key: str) -> str:
+    """Reads a secret from st.secrets (Streamlit Cloud) or falls back to environment variables."""
+    try:
+        val = st.secrets.get(key)
+        if val:
+            return str(val).strip()
+    except Exception:
+        pass
+    return os.getenv(key, "")
 
 def get_groq_client():
     """Initializes and returns the Groq client, raising a ValueError if key is missing."""
+    # Reload local env file if running locally
     if os.path.exists("env.txt"):
         load_dotenv("env.txt", override=True)
     else:
         load_dotenv(override=True)
         
-    key = os.getenv("GROQ_API_KEY")
+    key = _get_secret("GROQ_API_KEY")
     if not key or not key.strip() or key.startswith("your-groq"):
-        raise ValueError("GROQ_API_KEY is missing. Please set it in env.txt or your system environment variables.")
+        raise ValueError("GROQ_API_KEY is missing. Please set it in Streamlit Cloud secrets or in env.txt.")
     
     from groq import Groq
     return Groq(api_key=key.strip())

@@ -11,6 +11,7 @@ chats.db-journal
 env.txt
 .env
 .env.local
+.streamlit/secrets.toml
 
 # Logs
 *.log
