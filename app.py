@@ -967,6 +967,57 @@ else:
         var P = window.parent;
         var D = P.document;
 
+        // ── Layout Fixer (version-agnostic DOM styling) ──────────────────────────
+        function seamFixLayout() {
+            var form = D.querySelector('div[data-testid="stForm"]');
+            if (!form) return;
+
+            // Fix the floating form card
+            Object.assign(form.style, {
+                position: 'fixed', bottom: '24px', left: '50%',
+                transform: 'translateX(-50%)', width: '680px',
+                maxWidth: 'calc(100vw - 40px)', height: '120px',
+                backgroundColor: '#212121', border: '1px solid #2f2f2f',
+                borderRadius: '20px', padding: '12px 16px 56px 16px',
+                boxShadow: '0 10px 40px rgba(0,0,0,0.4)',
+                zIndex: '9999', overflow: 'visible'
+            });
+
+            // Find the submit button — covers every selector ever used by Streamlit
+            var btn = form.querySelector('button[kind="primaryFormSubmit"]')
+                   || form.querySelector('[data-testid="stFormSubmitButton"] button')
+                   || form.querySelector('button[data-testid="baseButton-primaryFormSubmit"]')
+                   || form.querySelector('button[type="submit"]');
+
+            if (btn) {
+                Object.assign(btn.style, {
+                    position: 'absolute', right: '16px', bottom: '14px',
+                    top: 'auto', left: 'auto', transform: 'none',
+                    width: '36px', height: '36px',
+                    minWidth: '36px', minHeight: '36px',
+                    borderRadius: '50%', background: '#0084ff',
+                    border: 'none', color: '#ffffff', fontSize: '18px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer', zIndex: '10000',
+                    boxShadow: '0 2px 8px rgba(0,132,255,0.3)', padding: '0'
+                });
+                // Make all ancestor wrappers inside the form non-offsetting
+                var el = btn.parentElement;
+                while (el && el !== form) {
+                    el.style.position = 'static';
+                    el.style.overflow = 'visible';
+                    el = el.parentElement;
+                }
+            }
+        }
+
+        // Run immediately + re-run on every Streamlit DOM update
+        seamFixLayout();
+        if (P.__seamLayoutObserver) P.__seamLayoutObserver.disconnect();
+        P.__seamLayoutObserver = new P.MutationObserver(seamFixLayout);
+        P.__seamLayoutObserver.observe(D.body, { childList: true, subtree: true });
+
+        // ── Signal / popup handlers ───────────────────────────────────────────────
         P.__seamOnSignalLabelClick = function(label) {
             var toggleId = label.getAttribute('for');
             var cb = D.getElementById(toggleId);
