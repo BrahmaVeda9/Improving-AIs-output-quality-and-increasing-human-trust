@@ -58,46 +58,45 @@ footer {
     background: #424242;
 }
 
-/* Allow sidebar to live alongside the main area — do NOT override flex layout */
+/* Force main container to use full viewport width and ignore sidebar layout shifting */
 [data-testid="stAppViewContainer"] {
     padding: 0 !important;
     margin: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
 }
 
-/* Main content area — let it sit naturally next to the sidebar */
 [data-testid="stMain"] {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
     overflow-x: hidden !important;
     overflow-y: auto !important;
-    padding-left: 0 !important;
     margin-left: 0 !important;
+    padding-left: 0 !important;
 }
 
-/* Content block: centered narrow column like ChatGPT */
+/* Main Container margins and alignment - centered relative to stable full-width viewport */
 div.block-container {
-    padding-top: 8.5rem !important;
-    padding-bottom: 11rem !important;
-    max-width: 680px !important;
-    margin: 0 auto !important;
+    padding-top: 8.5rem !important; /* Space below fixed top bar */
+    padding-bottom: 11rem !important; /* Space above input bar and toggle */
+    max-width: 680px !important; /* exact ChatGPT content width */
+    margin: 0 auto !important; /* Centers perfectly inside full-width main view */
     background-color: #171717 !important;
     overflow: visible !important;
 }
 
 /* Sidebar styling overrides - Minimalist deep dark overlay */
-[data-testid="stSidebar"],
-section[data-testid="stSidebar"] {
+[data-testid="stSidebar"] {
     background-color: #0d0d0d !important;
     border-right: 1px solid #2f2f2f !important;
+    position: fixed !important;
     z-index: 100000 !important;
-    min-width: 220px !important;
 }
-[data-testid="stSidebar"] [data-testid="stMarkdownContainer"],
-section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] {
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] {
     color: #94a3b8 !important;
-}
-
-/* Ensure sidebar expand/collapse button is visible */
-[data-testid="stSidebarCollapsedControl"] {
-    z-index: 100001 !important;
 }
 
 /* Top bar - fixed top center, glassmorphic */
@@ -807,20 +806,21 @@ if not chat_history:
         ("📄 Online Business Taxes", "Detail the current tax regulations for online businesses.")
     ]
     
-    # Render example pills — use st.columns inside a centered narrow wrapper
+    # Render example pills and handle DIRECT triggers
+    st.markdown('<div class="example-container">', unsafe_allow_html=True)
+    col1, col2, col3 = st.columns(3)
+    
     selected_prompt = None
-    _, mid, _ = st.columns([1, 6, 1])
-    with mid:
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            if st.button(example_prompts[0][0], key="ex_1", use_container_width=True):
-                selected_prompt = example_prompts[0][1]
-        with c2:
-            if st.button(example_prompts[1][0], key="ex_2", use_container_width=True):
-                selected_prompt = example_prompts[1][1]
-        with c3:
-            if st.button(example_prompts[2][0], key="ex_3", use_container_width=True):
-                selected_prompt = example_prompts[2][1]
+    with col1:
+        if st.button(example_prompts[0][0], key="ex_1", use_container_width=True):
+            selected_prompt = example_prompts[0][1]
+    with col2:
+        if st.button(example_prompts[1][0], key="ex_2", use_container_width=True):
+            selected_prompt = example_prompts[1][1]
+    with col3:
+        if st.button(example_prompts[2][0], key="ex_3", use_container_width=True):
+            selected_prompt = example_prompts[2][1]
+    st.markdown('</div>', unsafe_allow_html=True)
 
     # If any example prompt was clicked, submit it DIRECTLY to Groq
     if selected_prompt:
