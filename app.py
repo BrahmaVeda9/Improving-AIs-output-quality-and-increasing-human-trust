@@ -89,14 +89,21 @@ div.block-container {
 }
 
 /* Sidebar styling overrides - Minimalist deep dark overlay */
-[data-testid="stSidebar"] {
+[data-testid="stSidebar"],
+section[data-testid="stSidebar"] {
     background-color: #0d0d0d !important;
     border-right: 1px solid #2f2f2f !important;
-    position: fixed !important;
     z-index: 100000 !important;
+    min-width: 220px !important;
 }
-[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] {
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"],
+section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] {
     color: #94a3b8 !important;
+}
+
+/* Ensure sidebar expand/collapse button is visible */
+[data-testid="stSidebarCollapsedControl"] {
+    z-index: 100001 !important;
 }
 
 /* Top bar - fixed top center, glassmorphic */
@@ -508,38 +515,42 @@ div[role="switch"][aria-checked="true"] {
 
 /* Popups are displayed on hover via JavaScript. Clicking signal chips toggles highlights only. */
 
-/* Streamlit Form Column styling overrides to support absolute positioned send button */
+/* Streamlit Form: make all inner wrappers non-interfering so the
+   form itself acts as the absolute positioning root */
 div[data-testid="stForm"] [data-testid="column"],
 div[data-testid="stForm"] [data-testid="stHorizontalBlock"],
 div[data-testid="stForm"] [data-testid="element-container"],
 div[data-testid="stForm"] .stButton,
-div[data-testid="stForm"] [data-testid="stFormSubmitButton"] {
+div[data-testid="stForm"] [data-testid="stFormSubmitButton"],
+div[data-testid="stForm"] [data-testid="stFormSubmitButton"] > div {
     position: static !important;
+    overflow: visible !important;
 }
 
-/* Floating bottom capsule styled like ChatGPT with extra padding right to hold st.toggle and button side-by-side */
+/* Floating bottom capsule — fixed at viewport bottom, centered */
 div[data-testid="stForm"] {
     position: fixed !important;
     bottom: 24px !important;
-    left: calc(50vw - 340px) !important; /* Stable centering relative to viewport */
-    transform: none !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
     width: 680px !important;
     max-width: calc(100vw - 40px) !important;
-    background-color: #212121 !important; /* Dark input container */
+    background-color: #212121 !important;
     border: 1px solid #2f2f2f !important;
-    border-radius: 20px !important; /* Slightly rounded corners */
-    padding: 12px 16px 56px 16px !important; /* Room at bottom for send button */
+    border-radius: 20px !important;
+    padding: 12px 16px 56px 16px !important;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4) !important;
     z-index: 9999 !important;
     transition: box-shadow 150ms ease !important;
-    height: 120px !important; /* Tall box layout */
+    height: 120px !important;
+    overflow: visible !important;
 }
 div[data-testid="stForm"]:focus-within {
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4) !important;
     border-color: #2f2f2f !important;
 }
 
-/* Force dark theme input overrides - completely suppress all blue/focus styling */
+/* Force dark theme input overrides — suppress all Streamlit blue/focus styling */
 div[data-testid="stForm"] div[data-baseweb="input"],
 div[data-testid="stForm"] div[data-baseweb="input"]:focus-within,
 div[data-testid="stForm"] div[data-baseweb="input"]:hover,
@@ -575,12 +586,16 @@ div[data-testid="stForm"] input:focus-visible {
     border: none !important;
 }
 
-/* Send circle button - blue circle with white right arrow icon */
-div[data-testid="stForm"] button {
+/* Send button: absolute-positioned inside the fixed form card.
+   Targets both the old stFormSubmitButton wrapper AND bare button. */
+div[data-testid="stForm"] [data-testid="stFormSubmitButton"] button,
+div[data-testid="stForm"] button[kind="primaryFormSubmit"],
+div[data-testid="stForm"] button[data-testid="baseButton-primaryFormSubmit"] {
     position: absolute !important;
     right: 16px !important;
-    bottom: 14px !important; /* Positioned at bottom right inside the taller box */
+    bottom: 14px !important;
     top: auto !important;
+    left: auto !important;
     transform: none !important;
     background: #0084ff !important;
     color: #ffffff !important;
@@ -588,6 +603,8 @@ div[data-testid="stForm"] button {
     border-radius: 50% !important;
     width: 36px !important;
     height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
     padding: 0 !important;
     display: flex !important;
     align-items: center !important;
@@ -596,8 +613,11 @@ div[data-testid="stForm"] button {
     cursor: pointer !important;
     transition: all 150ms ease !important;
     box-shadow: 0 2px 8px rgba(0, 132, 255, 0.3) !important;
+    z-index: 10000 !important;
 }
-div[data-testid="stForm"] button:hover {
+div[data-testid="stForm"] [data-testid="stFormSubmitButton"] button:hover,
+div[data-testid="stForm"] button[kind="primaryFormSubmit"]:hover,
+div[data-testid="stForm"] button[data-testid="baseButton-primaryFormSubmit"]:hover {
     background: #0076e4 !important;
     color: #ffffff !important;
     transform: scale(1.05) !important;
